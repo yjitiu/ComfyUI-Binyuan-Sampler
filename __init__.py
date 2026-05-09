@@ -5,6 +5,7 @@ import folder_paths
 import nodes
 import comfy.utils
 import comfy.sd
+import comfy.samplers
 import torch.nn.functional as F
 from PIL import Image
 import numpy as np
@@ -103,10 +104,6 @@ class BinyuanUltimateSamplerV9:
     RETURN_NAMES = ("图像", "模型", "CLIP", "VAE", "Latent", "正面条件", "负面条件")
     FUNCTION = "run"
     CATEGORY = "Binyuan"
-
-    @classmethod
-    def IS_CHANGED(cls, **kwargs):
-        return None
 
     def get_image_size(self, image_tensor):
         if image_tensor is None:
