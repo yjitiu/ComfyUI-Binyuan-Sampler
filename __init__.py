@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from PIL import Image
 import numpy as np
 import time
+import gc
 
 # ========== 全局缓存 ==========
 _FILE_CACHE = {}
@@ -96,6 +97,7 @@ class BinyuanUltimateSamplerV9:
                 "上游图像_2": ("IMAGE",),
                 "lora_json": ("STRING", {"default": "[]"}),
                 "LORA_LIST": (["None"] + get_files("loras") + get_files("lora"),),
+                "自动清理显存": ("BOOLEAN", {"default": False, "label": "生成后清理显存"}),
             }
         }
 
@@ -155,6 +157,62 @@ class BinyuanUltimateSamplerV9:
             return vae_obj.__class__.__name__
         return "未知VAE"
 
+    def detect_model_type(self, lora_name):
+        """检测 LoRA 类型，用于选择加载方式"""
+        if lora_name is None:
+            return "standard"
+        lora_name_lower = lora_name.lower()
+        if "klein" in lora_name_lower or "flux2" in lora_name_lower:
+            return "klein"
+        if "zimage" in lora_name_lower or "lumina2" in lora_name_lower or "turbo" in lora_name_lower:
+            return "zimage"
+        return "standard"
+
+    def cleanup_vram(self):
+        """清理显存"""
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+            print("[信息] 显存已清理")
+
+    def load_loras(self, model, clip, lora_list):
+        """统一的 LoRA 加载入口，支持多 LoRA 叠加"""
+        loaded_count = 0
+        for idx, lora in enumerate(lora_list):
+            if not lora.get("e") or not lora.get("n") or lora.get("n") == "None":
+                continue
+            
+            lora_name = lora["n"]
+            lora_strength = lora.get("s", 1.0)
+            
+            # 检测 LoRA 类型
+            lora_type = self.detect_model_type(lora_name)
+            
+            # 查找文件
+            lora_path = folder_paths.get_full_path("loras", lora_name)
+            if not lora_path:
+                lora_path = folder_paths.get_full_path("lora", lora_name)
+            
+            if not lora_path or not os.path.exists(lora_path):
+                print(f"[警告] LoRA文件不存在: {lora_name}")
+                continue
+            
+            print(f"[信息] 加载 LoRA [{idx+1}]: {lora_name} (类型: {lora_type}, 强度: {lora_strength})")
+            
+            try:
+                # 标准加载方式（兼容所有模型）
+                lora_sd = comfy.utils.load_torch_file(lora_path)
+                model, clip = comfy.sd.load_lora_for_models(
+                    model, clip, lora_sd, lora_strength, lora_strength
+                )
+                loaded_count += 1
+                print(f"[信息] LoRA 加载成功: {lora_name}")
+            except Exception as e:
+                print(f"[警告] LoRA 加载失败 {lora_name}: {e}")
+        
+        return model, clip, loaded_count
+
     def run(self, 加载模式, Checkpoint, 扩散模型, CLIP_1, CLIP_2, CLIP_类型, VAE, 权重精度,
             正面提示词, 负面提示词, 串联模式="继承上游模型", 上游图像处理="重新VAE编码",
             Latent输入源="上游图像优先", 宽度=1024, 高度=1024, 生成数量=1, seed=0,
@@ -183,7 +241,7 @@ class BinyuanUltimateSamplerV9:
         print(f"[信息] 上游图像: {len(upstream_images)} 张")
         print(f"[信息] 串联模式: {串联模式}")
         
-        # ========== 打印外接状态（打印名称） ==========
+        # ========== 打印外接状态 ==========
         print(f"[信息] 外部模型: {self.get_model_name(external_model)}")
         print(f"[信息] 外部CLIP: {self.get_clip_name(external_clip)}")
         print(f"[信息] 外部VAE: {self.get_vae_name(external_vae)}")
@@ -281,28 +339,22 @@ class BinyuanUltimateSamplerV9:
                 else:
                     raise RuntimeError("VAE加载失败")
             
-            # ========== LoRA 加载 ==========
+            # ========== LoRA 加载（智能识别，多 LoRA 叠加） ==========
             lora_json_str = kwargs.get("lora_json", "[]")
+            print(f"[信息] LoRA配置: {lora_json_str}")
+            
             if lora_json_str and lora_json_str not in ["", "[]", "{}"]:
                 try:
                     lora_list = json.loads(lora_json_str)
-                    for lora in lora_list:
-                        if lora.get("e") and lora.get("n") and lora.get("n") != "None":
-                            lora_name = lora["n"]
-                            lora_strength = lora.get("s", 1.0)
-                            lora_path = folder_paths.get_full_path("loras", lora_name)
-                            if not lora_path:
-                                lora_path = folder_paths.get_full_path("lora", lora_name)
-                            if lora_path and os.path.exists(lora_path):
-                                lora_sd = comfy.utils.load_torch_file(lora_path)
-                                model, clip = comfy.sd.load_lora_for_models(
-                                    model, clip, lora_sd, lora_strength, lora_strength
-                                )
-                                print(f"[信息] LoRA加载成功: {lora_name} 强度: {lora_strength}")
-                            else:
-                                print(f"[警告] LoRA文件不存在: {lora_name}")
+                    print(f"[信息] 解析到 {len(lora_list)} 个LoRA")
+                    model, clip, loaded_count = self.load_loras(model, clip, lora_list)
+                    print(f"[信息] 共成功加载 {loaded_count} 个LoRA")
+                except json.JSONDecodeError as e:
+                    print(f"[警告] LoRA配置JSON解析失败: {e}")
                 except Exception as e:
                     print(f"[警告] LoRA加载失败: {e}")
+            else:
+                print("[信息] 无LoRA配置")
             
             # ========== 条件编码 ==========
             def encode_prompt(text, clip_type_val, guidance_val):
@@ -380,12 +432,21 @@ class BinyuanUltimateSamplerV9:
             images = vae.decode(samples[0]["samples"])
             print(f"[信息] 生成完成，图像数量: {images.shape[0]}")
             
+            # ========== 显存清理（可选） ==========
+            自动清理 = kwargs.get("自动清理显存", False)
+            if 自动清理:
+                self.cleanup_vram()
+            
             return (images, model, clip, vae, samples[0], positive, negative)
             
         except Exception as e:
             print(f"[错误] {e}")
             import traceback
             traceback.print_exc()
+            # 出错时也尝试清理显存
+            auto_cleanup = kwargs.get("自动清理显存", False)
+            if auto_cleanup:
+                self.cleanup_vram()
             empty_image = torch.zeros((1, 64, 64, 3))
             return (empty_image, None, None, None, None, None, None)
 
