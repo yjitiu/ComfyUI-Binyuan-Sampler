@@ -1,5 +1,4 @@
-<img width="523" height="739" alt="屏幕截图 2026-07-01 115403" src="https://github.com/user-attachments/assets/62162bdc-b06f-47f2-98b4-e17c58052de3" />
-<img width="523" height="739" alt="屏幕截图 2026-07-01 115403" src="https://github.com/user-attachments/assets/8f1d0cc9-8ac6-41eb-9c1e-1395018a7481" />
+
 # 🛡️ ComfyUI Binyuan · Ultimate Sampler V5.5
 
 > An **all-in-one sampler** custom node for ComfyUI. Load a whole checkpoint *or*
@@ -54,10 +53,12 @@
 - `CLIP_类型` 必须与实际模型架构匹配，否则加载/编码会报错。
 - `权重精度` 选 fp8/nvfp4 等需对应运行环境支持。
 - `trending_raw.json` 是节点内"热门模型"列表的本地缓存数据，可保留或删除，不影响功能。
+<img width="523" height="739" alt="屏幕截图 2026-07-01 115403" src="https://github.com/user-attachments/assets/b9c27ba1-be05-45f6-be9b-dfcc67e5001d" />
 
 ---
 
-## English
+## English<img width="1248" height="783" alt="屏幕截图 2026-07-01 115444" src="https://github.com/user-attachments/assets/53b3dd00-51cc-457a-b208-478c9df57944" />
+
 
 ### What it is
 Node `🛡️ Binyuan采样器 V5.5` under category `Binyuan`.
