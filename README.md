@@ -1,3 +1,5 @@
+<img width="523" height="739" alt="屏幕截图 2026-07-01 115403" src="https://github.com/user-attachments/assets/62162bdc-b06f-47f2-98b4-e17c58052de3" />
+<img width="523" height="739" alt="屏幕截图 2026-07-01 115403" src="https://github.com/user-attachments/assets/8f1d0cc9-8ac6-41eb-9c1e-1395018a7481" />
 # 🛡️ ComfyUI Binyuan · Ultimate Sampler V5.5
 
 > An **all-in-one sampler** custom node for ComfyUI. Load a whole checkpoint *or*
