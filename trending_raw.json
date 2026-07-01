@@ -1,0 +1,80 @@
+{
+  "date": "2026-06-29",
+  "huggingface": [
+    {
+      "id": "imagovision/act_imagovision_pick_up_and_place_20260629_103648_2026-06-29_15-17-30",
+      "url": "https://huggingface.co/imagovision/act_imagovision_pick_up_and_place_20260629_103648_2026-06-29_15-17-30",
+      "pipeline_tag": "",
+      "downloads": 0,
+      "likes": 0,
+      "lastModified": "2026-06-29T13:17:39.000Z"
+    },
+    {
+      "id": "Peppa8/Anal-Anus_Squirting-Orgasm_Wan_I2V",
+      "url": "https://huggingface.co/Peppa8/Anal-Anus_Squirting-Orgasm_Wan_I2V",
+      "pipeline_tag": "",
+      "downloads": 0,
+      "likes": 0,
+      "lastModified": "2026-06-29T13:15:57.000Z"
+    }
+  ],
+  "github_trending": [
+    {
+      "name": "/msitarzewski/agency-agents",
+      "url": "https://github.com/msitarzewski/agency-agents",
+      "desc": "A complete AI agency at your fingertips - From frontend wizards to Reddit community ninjas, from whimsy injectors to reality checkers. Each agent is a specialized expert with personality, processes, and proven deliverables.",
+      "stars": "118,338",
+      "lang": "Shell",
+      "today": "1,221 stars today"
+    },
+    {
+      "name": "/soxoj/maigret",
+      "url": "https://github.com/soxoj/maigret",
+      "desc": "🕵️‍♂️ Collect a dossier on a person by username from 3000+ sites",
+      "stars": "34,134",
+      "lang": "Python",
+      "today": "191 stars today"
+    },
+    {
+      "name": "/commaai/openpilot",
+      "url": "https://github.com/commaai/openpilot",
+      "desc": "openpilot is an operating system for robotics. Currently, it upgrades the driver assistance system on 300+ supported cars.",
+      "stars": "62,663",
+      "lang": "Python",
+      "today": "465 stars today"
+    },
+    {
+      "name": "/logto-io/logto",
+      "url": "https://github.com/logto-io/logto",
+      "desc": "🧑‍🚀 Authentication and authorization infrastructure for SaaS and AI apps, built on OIDC and OAuth 2.1 with multi-tenancy, SSO, and RBAC.",
+      "stars": "12,377",
+      "lang": "TypeScript",
+      "today": "77 stars today"
+    },
+    {
+      "name": "/xbtlin/ai-berkshire",
+      "url": "https://github.com/xbtlin/ai-berkshire",
+      "desc": "AI 时代的伯克希尔：基于 Claude Code / Codex 的价值投资研究框架。巴菲特·芒格·段永平·李录四大师方法论 + 多Agent并行研究。| AI-era Berkshire: a value investing research framework built for Claude Code / Codex. 4 masters' methodologies + multi-agent adversarial analysis.",
+      "stars": "6,346",
+      "lang": "Python",
+      "today": "1,397 stars today"
+    },
+    {
+      "name": "/browser-use/video-use",
+      "url": "https://github.com/browser-use/video-use",
+      "desc": "Edit videos with coding agents",
+      "stars": "11,617",
+      "lang": "Python",
+      "today": "976 stars today"
+    },
+    {
+      "name": "/Unclecheng-li/VulnClaw",
+      "url": "https://github.com/Unclecheng-li/VulnClaw",
+      "desc": "基于 AI Agent + MCP 工具链 + 渗透 Skill 编排， 配合大语言模型， 自然语言输入 → 自动完成「信息收集 → 漏洞发现 → 漏洞利用 → 报告生成」全流程。",
+      "stars": "1,010",
+      "lang": "Python",
+      "today": "105 stars today"
+    }
+  ],
+  "github_recent": []
+}
