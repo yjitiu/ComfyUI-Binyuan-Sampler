@@ -1,7 +1,7 @@
 [project]
 name = "binyuan-sampler"
-description = "ComfyUI custom node - all-in-one Ultimate Sampler V5.5. Loads whole checkpoint or split stack (diffusion + dual CLIP + VAE), supports Flux/SD3/Wan/Qwen-Image/Krea2/Z-Image/LTXV and more, with LoRA list and fp8/nvfp4 weight precision."
-version = "1.0.0"
+description = "ComfyUI custom node - all-in-one Ultimate Sampler V6.5. Loads whole checkpoint or split stack (diffusion + dual CLIP + VAE), supports Flux/SD3/Wan/Qwen-Image/Krea2/Z-Image/LTXV and more, with LoRA list and fp8/nvfp4 weight precision."
+version = "6.5.0"
 requires-python = ">= 3.9"
 dependencies = []
 license = "MIT"
@@ -13,5 +13,5 @@ Issues = "https://github.com/yjitiu/ComfyUI-Binyuan-Sampler/issues"
 
 [tool.comfy]
 PublisherId = "yjitiu"
-DisplayName = "Binyuan Sampler V5.5"
+DisplayName = "Binyuan Sampler V6.5"
 Icon = ""

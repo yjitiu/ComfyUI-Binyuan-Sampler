@@ -11,6 +11,9 @@ import folder_paths
 import nodes
 import comfy.utils
 import comfy.sd
+import comfy.sample
+import comfy.samplers
+import latent_preview
 import torch.nn.functional as F
 from PIL import Image
 import numpy as np
@@ -145,7 +148,7 @@ class BinyuanUltimateSamplerV9:
             get_files("diffusion_models") + get_files("unet") + get_files("unet_gguf")
         )))
 
-        # V5.5 支持的全部类型（与 ComfyUI CLIPType 枚举对齐，大小写变体保留以匹配用户习惯）
+        # V6.5 支持的全部类型（与 ComfyUI CLIPType 枚举对齐，大小写变体保留以匹配用户习惯）
         CLIP_TYPES = [
             "ACE", "boogu", "chroma", "cogvideox", "cosmos", "flux", "flux2",
             "hidream", "hunyuan_image", "ideogram4", "krea2", "lens", "longcat_image",
@@ -200,16 +203,18 @@ class BinyuanUltimateSamplerV9:
                 "外部CLIP": ("CLIP",),
                 "外部VAE": ("VAE",),
                 "外部Latent": ("LATENT",),
+                "外部Sigmas": ("SIGMAS",),
                 "外部正面条件": ("CONDITIONING",),
                 "外部负面条件": ("CONDITIONING",),
+                "LoRA设置": ("BINYUAN_LORA_SETTINGS",),
                 "上游图像_1": ("IMAGE",),
                 "上游图像_2": ("IMAGE",),
                 "上游图像_3": ("IMAGE",),
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "MODEL", "CLIP", "VAE", "LATENT", "CONDITIONING", "CONDITIONING")
-    RETURN_NAMES = ("图像", "模型", "CLIP", "VAE", "Latent", "正面条件", "负面条件")
+    RETURN_TYPES = ("IMAGE", "MODEL", "CLIP", "VAE", "LATENT", "CONDITIONING", "CONDITIONING", "LATENT")
+    RETURN_NAMES = ("图像", "模型", "CLIP", "VAE", "Latent", "正面条件", "负面条件", "降噪Latent")
     FUNCTION = "run"
     CATEGORY = "Binyuan"
 
@@ -469,7 +474,7 @@ class BinyuanUltimateSamplerV9:
         return model, clip, loaded_count
 
     def run(self, **kwargs):
-        print(f"[信息] Binyuan采样器 V5.5")
+        print(f"[信息] Binyuan采样器 V6.5")
         
         # ========== 获取并解析参数 ==========
         加载模式 = kwargs.get("加载模式", "整包Checkpoint")
@@ -497,6 +502,7 @@ class BinyuanUltimateSamplerV9:
         调度器 = kwargs.get("调度器", "simple")
         重绘强度 = float(kwargs.get("重绘强度", 1.0))
         lora_json_str = kwargs.get("lora_json", "[]")
+        lora_settings = kwargs.get("LoRA设置") or []
         自动清理显存 = kwargs.get("自动清理显存", False)
         
         # ========== 获取可选外部输入 ==========
@@ -504,6 +510,7 @@ class BinyuanUltimateSamplerV9:
         external_clip = kwargs.get("外部CLIP")
         external_vae = kwargs.get("外部VAE")
         external_latent = kwargs.get("外部Latent")
+        external_sigmas = kwargs.get("外部Sigmas")
         external_positive = kwargs.get("外部正面条件")
         external_negative = kwargs.get("外部负面条件")
         
@@ -527,6 +534,7 @@ class BinyuanUltimateSamplerV9:
         print(f"[信息] 外部CLIP: {self.get_clip_name(external_clip)}")
         print(f"[信息] 外部VAE: {self.get_vae_name(external_vae)}")
         print(f"[信息] 外部Latent: {'有' if external_latent is not None else '无'}")
+        print(f"[信息] 外部Sigmas: {'有' if external_sigmas is not None else '无'}")
         print(f"[信息] 外部正面条件: {'有' if external_positive is not None else '无'}")
         print(f"[信息] 外部负面条件: {'有' if external_negative is not None else '无'}")
         
@@ -634,8 +642,21 @@ class BinyuanUltimateSamplerV9:
             
             if model is None:
                 raise RuntimeError("模型加载失败")
+            # 外部正、负条件都已提供时，采样阶段不需要 CLIP。
+            # 这允许“外部模型 + 外部条件 + 内部/外部 VAE”的混合串联方式。
+            # 只有仍需由本节点编码提示词时，才强制要求 CLIP。
+            has_complete_external_conditioning = (
+                use_inherit
+                and external_positive is not None
+                and external_negative is not None
+            )
+            if clip is None and not has_complete_external_conditioning:
+                raise RuntimeError(
+                    "CLIP加载失败：当前没有同时接入外部正面条件和外部负面条件。"
+                    "请连接外部CLIP、在CLIP_1中选择内部CLIP，或同时连接两路外部条件。"
+                )
             if clip is None:
-                raise RuntimeError("CLIP加载失败")
+                print("[信息] 已接入完整外部条件，跳过CLIP加载")
             if vae is None:
                 if hasattr(model, 'model') and hasattr(model.model, 'vae'):
                     vae = model.model.vae
@@ -651,6 +672,8 @@ class BinyuanUltimateSamplerV9:
             
             # ========== LoRA 加载（多 LoRA 叠加，跨内核稳定） ==========
             lora_list = self.parse_lora_config(lora_json_str)
+            if isinstance(lora_settings, list):
+                lora_list.extend(lora_settings)
             if lora_list:
                 print(f"[信息] 解析到 {len(lora_list)} 个LoRA")
                 model, clip, loaded_count = self.load_loras(model, clip, lora_list)
@@ -740,11 +763,60 @@ class BinyuanUltimateSamplerV9:
             if latent is None:
                 raise RuntimeError("Latent 生成失败")
             
-            # ========== 采样 ==========
-            samples = nodes.common_ksampler(
-                model, seed, 步数, CFG, 采样算法, 调度器,
-                positive, negative, latent, denoise=重绘强度
+            # ========== 自定义采样（支持外部 SIGMAS + 真正的 x0 降噪 Latent） ==========
+            latent_image = latent["samples"]
+            latent_for_sample = latent.copy()
+            latent_image = comfy.sample.fix_empty_latent_channels(
+                model, latent_image,
+                latent.get("downscale_ratio_spacial", None),
+                latent.get("downscale_ratio_temporal", None),
             )
+            latent_for_sample["samples"] = latent_image
+
+            if external_sigmas is not None:
+                sigmas = external_sigmas
+                print(f"[信息] 使用外部Sigmas，采样步数: {max(int(sigmas.shape[-1]) - 1, 0)}")
+            else:
+                if 重绘强度 <= 0.0:
+                    sigmas = torch.FloatTensor([])
+                else:
+                    total_steps = 步数 if 重绘强度 >= 1.0 else int(步数 / 重绘强度)
+                    sigmas = comfy.samplers.calculate_sigmas(
+                        model.get_model_object("model_sampling"), 调度器, total_steps
+                    ).cpu()
+                    sigmas = sigmas[-(步数 + 1):]
+                print(f"[信息] 使用内部Sigmas: {调度器}, {步数}步, 重绘强度={重绘强度}")
+
+            batch_inds = latent_for_sample.get("batch_index", None)
+            noise = comfy.sample.prepare_noise(latent_image, seed, batch_inds)
+            noise_mask = latent_for_sample.get("noise_mask", None)
+            sampler = comfy.samplers.sampler_object(采样算法)
+            x0_output = {}
+            callback = latent_preview.prepare_callback(
+                model, max(int(sigmas.shape[-1]) - 1, 0), x0_output
+            )
+            sampled_tensor = comfy.sample.sample_custom(
+                model, noise, CFG, sampler, sigmas, positive, negative, latent_image,
+                noise_mask=noise_mask, callback=callback,
+                disable_pbar=not comfy.utils.PROGRESS_BAR_ENABLED, seed=seed,
+            )
+
+            sampled_latent = latent_for_sample.copy()
+            sampled_latent.pop("downscale_ratio_spacial", None)
+            sampled_latent.pop("downscale_ratio_temporal", None)
+            sampled_latent["samples"] = sampled_tensor
+
+            if "x0" in x0_output:
+                x0 = x0_output["x0"]
+                if getattr(sampled_tensor, "is_nested", False) and not getattr(x0, "is_nested", False):
+                    latent_shapes = [x.shape for x in sampled_tensor.unbind()]
+                    x0 = comfy.nested_tensor.NestedTensor(comfy.utils.unpack_latents(x0, latent_shapes))
+                denoised_latent = latent_for_sample.copy()
+                denoised_latent["samples"] = model.model.process_latent_out(x0.cpu())
+            else:
+                denoised_latent = sampled_latent
+
+            samples = (sampled_latent,)
             
             images = vae.decode(samples[0]["samples"])
             # 视频 VAE（如 Wan/Qwen/Krea2 用的 Wan21 VAE，latent_dim=3）解码后是 5D [B,T,H,W,C]，
@@ -759,7 +831,7 @@ class BinyuanUltimateSamplerV9:
             if 自动清理显存:
                 self.cleanup_vram()
             
-            return (images, model, clip, vae, samples[0], positive, negative)
+            return (images, model, clip, vae, samples[0], positive, negative, denoised_latent)
             
         except Exception as e:
             print(f"[错误] {e}")
@@ -767,9 +839,10 @@ class BinyuanUltimateSamplerV9:
             traceback.print_exc()
             if 自动清理显存:
                 self.cleanup_vram()
-            empty_image = torch.zeros((1, 64, 64, 3))
-            return (empty_image, None, None, None, None, None, None)
+            # 不返回伪造图像和 None 输出；让错误停在本节点，避免下游节点
+            # 报出 "NoneType has no attribute copy" 等误导性异常。
+            raise RuntimeError(f"Binyuan采样器 V6.5 执行失败：{e}") from e
 
 NODE_CLASS_MAPPINGS = {"BinyuanUltimateSampler": BinyuanUltimateSamplerV9}
-NODE_DISPLAY_NAME_MAPPINGS = {"BinyuanUltimateSampler": "🛡️ Binyuan采样器 V5.5"}
+NODE_DISPLAY_NAME_MAPPINGS = {"BinyuanUltimateSampler": "🛡️ Binyuan采样器 V6.5"}
 WEB_DIRECTORY = "js"

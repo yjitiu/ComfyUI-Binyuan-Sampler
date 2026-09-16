@@ -7,3 +7,10 @@ Thumbs.db
 .idea/
 .vscode/
 *.log
+
+# 本地备份与打包产物（不参与发布）
+*.bak
+*.bak-*
+*.bak_*
+*.rar
+node.zip

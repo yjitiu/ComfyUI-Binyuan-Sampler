@@ -1,5 +1,7 @@
 
-# 🛡️ ComfyUI Binyuan · Ultimate Sampler V5.5
+# 🛡️ ComfyUI Binyuan · Ultimate Sampler V6.5
+
+V6.5 支持连接 `Binyuan LoRA设置 V1.0` 的“LoRA设置”输出；外挂 LoRA 会与节点内部 LoRA 管理器中的配置一起叠加。
 
 > An **all-in-one sampler** custom node for ComfyUI. Load a whole checkpoint *or*
 > a split stack (diffusion model + dual CLIP + VAE), pick from many architectures
@@ -14,12 +16,12 @@
 ## 中文说明
 
 ### 这是什么
-节点 `🛡️ Binyuan采样器 V5.5`，分类 `Binyuan`。
+节点 `🛡️ Binyuan采样器 V6.5`，分类 `Binyuan`。
 一体化采样器：自带模型/CLIP/VAE 加载、提示词、尺寸预设、采样参数、LoRA 列表、上游图像处理，并把图像、模型、CLIP、VAE、Latent、正负条件全部作为端口输出，方便串联下游。
 
 ### 怎么用
-1. 放到 `ComfyUI/custom_nodes/binyuan_sampler_plugin_v5.5/`，重启 ComfyUI。
-2. 右键 → `Binyuan` → `🛡️ Binyuan采样器 V5.5`。
+1. 放到 `ComfyUI/custom_nodes/binyuan_sampler_plugin_v6.5/`，重启 ComfyUI。
+2. 右键 → `Binyuan` → `🛡️ Binyuan采样器 V6.5`。
 3. 选 `加载模式`：
    - `整包Checkpoint`：在 `Checkpoint` 下拉选一个 .safetensors 整包模型。
    - `分离式(Flux/SD3/扩散)`：分别选 `扩散模型`、`CLIP_1`/`CLIP_2`、`VAE`，并在 `CLIP_类型` 选对应架构（flux/sd3/wan/qwen_image/krea2…）。
@@ -61,13 +63,13 @@
 
 
 ### What it is
-Node `🛡️ Binyuan采样器 V5.5` under category `Binyuan`.
+Node `🛡️ Binyuan采样器 V6.5` under category `Binyuan`.
 An all-in-one sampler: loads model/CLIP/VAE, encodes prompts, runs sampling,
 decodes to image — and also exposes model/CLIP/VAE/Latent/conditioning as
 output ports for chaining downstream nodes.
 
 ### How to use
-1. Drop into `ComfyUI/custom_nodes/binyuan_sampler_plugin_v5.5/`, restart ComfyUI.
+1. Drop into `ComfyUI/custom_nodes/binyuan_sampler_plugin_v6.5/`, restart ComfyUI.
 2. Right-click → `Binyuan` → add the node.
 3. Pick `加载模式` (load mode):
    - `整包Checkpoint`: choose one .safetensors checkpoint.
@@ -98,4 +100,4 @@ output ports for chaining downstream nodes.
 
 ## Install
 - ComfyUI Manager: search `Binyuan Sampler`.
-- Manual: `git clone https://github.com/yjitiu/ComfyUI-Binyuan-Sampler.git binyuan_sampler_plugin_v5.5`
+- Manual: `git clone https://github.com/yjitiu/ComfyUI-Binyuan-Sampler.git binyuan_sampler_plugin_v6.5`
